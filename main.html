@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Store</title>
+    <link rel="stylesheet" href="style1.css">
+    <style>
+        .search-results {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            z-index: 1000;
+            width: calc(100% - 20px);
+            margin-top: 5px;
+        }
+
+        .search-results div {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .search-results div:hover {
+            background-color: #f0f0f0;
+        }
+
+
+        .logo img {
+            width: 150px;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-top">
+            <div class="logo">
+                <img src="assets/logos/store-logo.svg" alt="Store Logo">
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search for product, brand or model">
+                <button id="search-button">Search</button>
+                <div id="search-results" class="search-results"></div>
+            </div>
+            <div class="user-options">
+                <a href="register.html">Register</a>
+                <a href="login.html">Login</a>
+
+            </div>
+        </div>
+    </header>
+
+    <nav class="navigation">
+        <ul>
+            <li><a href="shopgear.html">Shop for Gear</a></li>
+            <li><a href="rental.html">Rentals</a></li>
+            <li><a href="brand.html">Brands</a></li>
+            <li><a href="guide.html">Buyer Guide</a></li>
+            <li><a href="sale.html">Sales</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section class="hero-section">
+            <img src="C:\Users\nitin\Downloads\fji1.webp" alt="bg">
+            <div class="hero-text">
+                <h1>New In! Fujifilm X-T1</h1>
+                <p>Sensor: APS-C X-Trans CMOS II<br>Electronic Shutter: 1/32000s<br>LCD Monitor: 3.0" 1.04M-dot</p>
+                <a href="brands4.html" class="btn-learn-more">Learn More</a>
+            </div>
+        </section>
+
+        <section class="categories">
+            <h2>Featured Categories</h2>
+            <div class="category-grid">
+                <div class="category-item">
+                    <a href="vp1.html">
+                        <img src="https://picsum.photos/seed/main-cameras-category/800/600" alt="Cameras">
+                        <h3>Cameras</h3>
+                    </a>
+                </div>
+                <div class="category-item">
+                    <a href="tripo.html">
+                        <img src="https://picsum.photos/seed/camera-tripod-main/800/600" alt="tripods">
+                        <h3>tripods</h3>
+                    </a>
+                </div>
+                <div class="category-item">
+                    <a href="acc.html">
+                        <img src="https://picsum.photos/seed/main-accessories-category/800/600" alt="Accessories">
+                        <h3>Accessories</h3>
+                    </a>
+                </div>
+                <div class="category-item">
+                    <a href="lens.html">
+                        <img src="https://picsum.photos/seed/main-lenses-category/800/600" alt="Lenses">
+                        <h3>Lenses</h3>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Camera Store. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const products = [
+            { name: "Fujifilm", link: "brands4.html" },
+            { name: "Canon", link: "brands1.html" },
+            { name: "Nikon", link: "brands2.html" },
+            { name: "Sony", link: "brands3.html" },
+            { name: "Panasonic", link: "brand5.html" },
+            { name: "Camera Trip", link: "tripo.html" },
+            { name: "Camera Lenses", link: "lens.html" },
+            { name: "Tripods", link: "tripo.html" },
+            { name: "Camera Accessories", link: "acc.html" }
+        ];
+
+        const brandLinks = {
+            'panasonic': 'brand5.html',
+            'sony': 'brands3.html',
+            'nikon': 'brands2.html',
+            'fujifilm': 'brands4.html'
+        };
+
+        document.getElementById('search-button').addEventListener('click', function () {
+            const input = document.getElementById('search-input').value.toLowerCase();
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '';
+
+            if (input) {
+                if (brandLinks[input]) {
+                    window.location.href = brandLinks[input];
+                } else {
+                    const filteredProducts = products.filter(product => product.name.toLowerCase().includes(input));
+                    if (filteredProducts.length > 0) {
+                        resultsContainer.style.display = 'block';
+                        filteredProducts.forEach(product => {
+                            const div = document.createElement('div');
+                            div.innerHTML = `<a href="${product.link}">${product.name}</a>`;
+                            resultsContainer.appendChild(div);
+                        });
+                    } else {
+                        resultsContainer.style.display = 'none';
+                    }
+                }
+            } else {
+                resultsContainer.style.display = 'none';
+            }
+        });
+    </script>
+    <script src="image-fallback.js"></script>
+</body>
+
+</html>
