@@ -626,7 +626,7 @@ function scheduleReminder(db, rental) {
     app.use(express.static(projectRoot));
 
     app.get('/', (req, res) => {
-        res.sendFile(path.join(projectRoot, 'main.html'));
+        res.sendFile(path.join(projectRoot, 'index.html'));
     });
 
     app.listen(PORT, () => {

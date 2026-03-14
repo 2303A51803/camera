@@ -29,7 +29,7 @@ Server runs at:
 Do **not** open HTML files directly with `file:///...`.
 Open through the backend server so API calls work:
 
-- `http://localhost:3000/main.html`
+- `http://localhost:3000/index.html`
 - `http://localhost:3000/register.html`
 - `http://localhost:3000/login.html`
 

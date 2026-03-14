@@ -104,7 +104,7 @@ if (loginForm) {
             localStorage.setItem('cameraStoreUser', JSON.stringify(data.user));
             showMessage(data.message || 'Login successful. Redirecting...', 'success');
             setTimeout(() => {
-                window.location.href = 'main.html';
+                window.location.href = 'index.html';
             }, 700);
         } catch (error) {
             console.error('Login error:', error);
