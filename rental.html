@@ -701,6 +701,18 @@
             }
         }
 
+        function getAuthToken() {
+            const user = getLoggedInUser();
+            return (user && user.token) || localStorage.getItem('cameraStoreToken') || '';
+        }
+
+        function getAuthHeaders(extraHeaders = {}) {
+            return {
+                ...extraHeaders,
+                Authorization: `Bearer ${getAuthToken()}`
+            };
+        }
+
         async function confirmRental() {
             if (cartItems.length === 0) {
                 showMessage('Your cart is empty. Please add at least one camera for rental.', 'error');
@@ -721,9 +733,7 @@
             try {
                 const response = await fetch('/api/rentals/confirm', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         userId: user.id,
                         items: cartItems

@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="220" height="80" viewBox="0 0 220 80" role="img" aria-label="Camera Store Logo">
-  <rect width="220" height="80" rx="10" fill="#0f172a" />
-  <circle cx="34" cy="40" r="18" fill="#ffffff" />
-  <circle cx="34" cy="40" r="8" fill="#0f172a" />
-  <text x="62" y="35" fill="#ffffff" font-size="18" font-family="Arial, sans-serif" font-weight="700">CAMERA</text>
-  <text x="62" y="56" fill="#94a3b8" font-size="14" font-family="Arial, sans-serif" font-weight="600">STORE</text>
-</svg>

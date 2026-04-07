@@ -10,6 +10,7 @@
     "dependencies": {
         "bcryptjs": "^2.4.3",
         "express": "^4.21.2",
+        "jsonwebtoken": "^9.0.3",
         "mysql2": "^3.11.5",
         "nodemailer": "^6.9.15",
         "sqlite": "^5.1.1",

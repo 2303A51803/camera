@@ -88,6 +88,19 @@ function getLoggedInUser() {
     }
 }
 
+function getAuthToken() {
+    const user = getLoggedInUser();
+    return (user && user.token) || localStorage.getItem('cameraStoreToken') || '';
+}
+
+function getAuthHeaders(extraHeaders = {}) {
+    const token = getAuthToken();
+    return {
+        ...extraHeaders,
+        Authorization: `Bearer ${token}`
+    };
+}
+
 function calculateCartTotal() {
     return cart.reduce((sum, product) => sum + Number(product.price), 0);
 }
@@ -106,7 +119,9 @@ async function showCartDetails() {
         return;
     }
     try {
-        const res = await fetch(`/api/cart/${user.id}`);
+        const res = await fetch(`/api/cart/${user.id}`, {
+            headers: getAuthHeaders()
+        });
         const data = await res.json();
         if (!res.ok || !Array.isArray(data.cart)) {
             cartItemsContainer.innerHTML = '<p>Could not load cart items.</p>';
@@ -148,7 +163,7 @@ async function addToCart(productName, price) {
         try {
             await fetch('/api/cart', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     userId: user.id,
                     name: productName,
@@ -165,7 +180,10 @@ async function addToCart(productName, price) {
 
 async function removeFromCartDb(itemId) {
     try {
-        await fetch(`/api/cart/${itemId}`, { method: 'DELETE' });
+        await fetch(`/api/cart/${itemId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
         showMessage('Item removed from cart.', 'success');
         showCartDetails();
     } catch (err) {
@@ -196,9 +214,7 @@ async function confirmPurchase() {
     try {
         const response = await fetch('/api/purchases/confirm', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 userId: user.id,
                 items: cart.map((item) => ({

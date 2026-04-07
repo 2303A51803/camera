@@ -101,7 +101,12 @@ if (loginForm) {
                 return;
             }
 
-            localStorage.setItem('cameraStoreUser', JSON.stringify(data.user));
+            const authUser = {
+                ...data.user,
+                token: data.token
+            };
+            localStorage.setItem('cameraStoreUser', JSON.stringify(authUser));
+            localStorage.setItem('cameraStoreToken', data.token);
             showMessage(data.message || 'Login successful. Redirecting...', 'success');
             setTimeout(() => {
                 window.location.href = 'index.html';

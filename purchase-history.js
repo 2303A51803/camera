@@ -27,6 +27,11 @@ function getLoggedInUser() {
     }
 }
 
+function getAuthToken() {
+    const user = getLoggedInUser();
+    return (user && user.token) || localStorage.getItem('cameraStoreToken') || '';
+}
+
 function formatDate(value) {
     return new Date(value).toLocaleString('en-IN', {
         day: '2-digit',
@@ -97,7 +102,12 @@ async function loadPurchaseHistory() {
     try {
         historyContent.innerHTML = '<div class="empty-state"><p>Loading purchase history...</p></div>';
 
-        const response = await fetch(`/api/purchases/history/${user.id}`);
+        const token = getAuthToken();
+        const response = await fetch(`/api/purchases/history/${user.id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
         const data = await response.json();
 
         if (!response.ok) {

@@ -11,6 +11,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { initDb } = require('./db');
 const { initMySql, getMySqlPool } = require('./mysql');
@@ -20,7 +21,41 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
+const JWT_SECRET = process.env.JWT_SECRET || 'camera-store-dev-secret-change-me';
+
 const reminderTimers = new Map();
+
+function createAuthToken(user) {
+    return jwt.sign(
+        {
+            userId: user.id,
+            email: user.email
+        },
+        JWT_SECRET,
+        { expiresIn: '1d' }
+    );
+}
+
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers.authorization || '';
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+    if (!match) {
+        return res.status(401).json({ message: 'Authorization token is required.' });
+    }
+
+    try {
+        const payload = jwt.verify(match[1], JWT_SECRET);
+        req.user = {
+            id: payload.userId,
+            email: payload.email
+        };
+        return next();
+    } catch (error) {
+        console.error('JWT verification error:', error);
+        return res.status(401).json({ message: 'Invalid or expired authorization token.' });
+    }
+}
 
 function createMailerTransport() {
     const host = process.env.SMTP_HOST;
@@ -48,16 +83,27 @@ const mailer = createMailerTransport();
 
 // --- Moved route definitions here ---
 // Remove a cart item by id
-app.delete('/api/cart/:itemId', async (req, res) => {
+app.delete('/api/cart/:itemId', authenticateToken, async (req, res) => {
     try {
         const mysqlPool = getMySqlPool();
         if (!mysqlPool) {
             return res.status(503).json({ message: 'Cart service is not available. Please configure MySQL.' });
         }
+
         const itemId = Number(req.params.itemId);
         if (!Number.isInteger(itemId) || itemId <= 0) {
             return res.status(400).json({ message: 'Valid itemId is required.' });
         }
+
+        const [rows] = await mysqlPool.execute('SELECT user_id FROM cart_items WHERE id = ?', [itemId]);
+        if (!rows.length) {
+            return res.status(404).json({ message: 'Cart item not found.' });
+        }
+
+        if (Number(rows[0].user_id) !== Number(req.user.id)) {
+            return res.status(403).json({ message: 'You are not allowed to modify this cart item.' });
+        }
+
         await mysqlPool.execute('DELETE FROM cart_items WHERE id = ?', [itemId]);
         return res.status(200).json({ message: 'Cart item removed.' });
     } catch (error) {
@@ -66,7 +112,7 @@ app.delete('/api/cart/:itemId', async (req, res) => {
     }
 });
 // Get cart items for a user
-app.get('/api/cart/:userId', async (req, res) => {
+app.get('/api/cart/:userId', authenticateToken, async (req, res) => {
     try {
         const mysqlPool = getMySqlPool();
         if (!mysqlPool) {
@@ -75,6 +121,9 @@ app.get('/api/cart/:userId', async (req, res) => {
         const userId = Number(req.params.userId);
         if (!Number.isInteger(userId) || userId <= 0) {
             return res.status(400).json({ message: 'Valid userId is required.' });
+        }
+        if (userId !== Number(req.user.id)) {
+            return res.status(403).json({ message: 'You can only view your own cart.' });
         }
         const [rows] = await mysqlPool.execute(
             'SELECT id, item_name, price, quantity, created_at FROM cart_items WHERE user_id = ? ORDER BY created_at DESC',
@@ -326,8 +375,11 @@ function scheduleReminder(db, rental) {
                 return res.status(401).json({ message: 'Invalid email or password.' });
             }
 
+            const token = createAuthToken(user);
+
             return res.status(200).json({
                 message: 'Login successful.',
+                token,
                 user: {
                     id: user.id,
                     name: user.name,
@@ -340,7 +392,7 @@ function scheduleReminder(db, rental) {
         }
     });
 
-    app.post('/api/rentals/confirm', async (req, res) => {
+    app.post('/api/rentals/confirm', authenticateToken, async (req, res) => {
         try {
             const { userId, items } = req.body;
 
@@ -348,7 +400,11 @@ function scheduleReminder(db, rental) {
                 return res.status(400).json({ message: 'User and rental items are required.' });
             }
 
-            const user = await db.get('SELECT id, name, email FROM users WHERE id = ?', userId);
+            if (Number(userId) !== Number(req.user.id)) {
+                return res.status(403).json({ message: 'You can only confirm rentals for your own account.' });
+            }
+
+            const user = await db.get('SELECT id, name, email FROM users WHERE id = ?', req.user.id);
             if (!user) {
                 return res.status(401).json({ message: 'Invalid user. Please login again.' });
             }
@@ -427,7 +483,7 @@ function scheduleReminder(db, rental) {
         }
     });
 
-    app.post('/api/purchases/confirm', async (req, res) => {
+    app.post('/api/purchases/confirm', authenticateToken, async (req, res) => {
         try {
             const mysqlPool = getMySqlPool();
             if (!mysqlPool) {
@@ -442,7 +498,11 @@ function scheduleReminder(db, rental) {
                 return res.status(400).json({ message: 'User and purchase items are required.' });
             }
 
-            const user = await db.get('SELECT id, name, email FROM users WHERE id = ?', userId);
+            if (Number(userId) !== Number(req.user.id)) {
+                return res.status(403).json({ message: 'You can only confirm purchases for your own account.' });
+            }
+
+            const user = await db.get('SELECT id, name, email FROM users WHERE id = ?', req.user.id);
             if (!user) {
                 return res.status(401).json({ message: 'Invalid user. Please login again.' });
             }
@@ -522,7 +582,7 @@ function scheduleReminder(db, rental) {
     });
 
     // Add to cart API: stores a cart item in MySQL
-    app.post('/api/cart', async (req, res) => {
+    app.post('/api/cart', authenticateToken, async (req, res) => {
         try {
             const mysqlPool = getMySqlPool();
             if (!mysqlPool) {
@@ -531,6 +591,9 @@ function scheduleReminder(db, rental) {
             const { userId, name, price, quantity } = req.body;
             if (!userId || !name || !price) {
                 return res.status(400).json({ message: 'userId, name, and price are required.' });
+            }
+            if (Number(userId) !== Number(req.user.id)) {
+                return res.status(403).json({ message: 'You can only modify your own cart.' });
             }
             const qty = quantity && Number.isInteger(Number(quantity)) && Number(quantity) > 0 ? Number(quantity) : 1;
             // Create cart_items table if not exists
@@ -546,7 +609,7 @@ function scheduleReminder(db, rental) {
             `);
             await mysqlPool.execute(
                 'INSERT INTO cart_items (user_id, item_name, price, quantity) VALUES (?, ?, ?, ?)',
-                [userId, name, price, qty]
+                [req.user.id, name, price, qty]
             );
             return res.status(201).json({ message: 'Item added to cart in database.' });
         } catch (error) {
@@ -555,7 +618,7 @@ function scheduleReminder(db, rental) {
         }
     });
 
-    app.get('/api/purchases/history/:userId', async (req, res) => {
+    app.get('/api/purchases/history/:userId', authenticateToken, async (req, res) => {
         try {
             const mysqlPool = getMySqlPool();
             if (!mysqlPool) {
@@ -569,7 +632,11 @@ function scheduleReminder(db, rental) {
                 return res.status(400).json({ message: 'Valid userId is required.' });
             }
 
-            const user = await db.get('SELECT id FROM users WHERE id = ?', userId);
+            if (userId !== Number(req.user.id)) {
+                return res.status(403).json({ message: 'You can only view your own purchase history.' });
+            }
+
+            const user = await db.get('SELECT id FROM users WHERE id = ?', req.user.id);
             if (!user) {
                 return res.status(404).json({ message: 'User not found.' });
             }
