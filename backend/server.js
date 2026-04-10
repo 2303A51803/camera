@@ -10,6 +10,7 @@ require('dotenv').config();
 // (Moved below)
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
@@ -19,7 +20,64 @@ const { initMySql, getMySqlPool } = require('./mysql');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ============================================
+// MIDDLEWARE
+// ============================================
+
+// Parse JSON requests
 app.use(express.json());
+
+// ============================================
+// CORS Configuration
+// ============================================
+const getCorsOptions = () => {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const nodeEnv = process.env.NODE_ENV || 'development';
+
+    const allowedOrigins = [
+        'http://localhost:3000',      // Local backend
+        'http://localhost:5000',      // Local frontend
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5000',
+        frontendUrl,                  // Production frontend
+    ];
+
+    // Add Vercel URL in production
+    if (nodeEnv === 'production' && process.env.VERCEL_URL) {
+        allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+    }
+
+    return {
+        origin: (origin, callback) => {
+            // Allow requests with no origin (mobile apps, curl, Postman)
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                console.warn(`⚠️  CORS blocked from: ${origin}`);
+                callback(new Error('CORS not allowed'));
+            }
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+        exposedHeaders: ['Content-Length', 'X-JSON-Response'],
+        maxAge: 3600,
+    };
+};
+
+app.use(cors(getCorsOptions()));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+    });
+});
 
 const JWT_SECRET = process.env.JWT_SECRET || 'camera-store-dev-secret-change-me';
 

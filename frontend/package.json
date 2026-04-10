@@ -1,0 +1,31 @@
+{
+    "name": "camera-store-frontend",
+    "version": "1.0.0",
+    "description": "Frontend for camera e-commerce store",
+    "private": true,
+    "scripts": {
+        "start": "http-server .. -p 5000 -c-1",
+        "dev": "http-server .. -p 5000",
+        "build": "echo 'Frontend build complete'",
+        "serve": "http-server .. -p 5000",
+        "test": "echo 'No tests configured yet'",
+        "lint": "echo 'No linting configured yet'"
+    },
+    "keywords": [
+        "ecommerce",
+        "camera",
+        "store"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "dotenv": "^17.3.1"
+    },
+    "devDependencies": {
+        "http-server": "^14.1.1"
+    },
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=9.0.0"
+    }
+}

@@ -1,6 +1,10 @@
 const loginForm = document.getElementById('login-form');
 const savePasswordBtn = document.getElementById('save-password');
 
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : window.location.origin;
+
 let toastTimer = null;
 
 function ensureToastContainer() {
@@ -86,7 +90,7 @@ if (loginForm) {
         }
 
         try {
-            const response = await fetch('/api/auth/login', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
