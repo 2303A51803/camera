@@ -3,13 +3,37 @@ const mysql = require('mysql2/promise');
 
 let mysqlPool = null;
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function isMySqlConfigured() {
     return Boolean(
-        process.env.MYSQL_HOST &&
         process.env.MYSQL_USER &&
         process.env.MYSQL_PASSWORD &&
         process.env.MYSQL_DATABASE
     );
+}
+
+async function waitForMySqlReady(pool) {
+    const attempts = Number(process.env.MYSQL_RETRY_ATTEMPTS || 10);
+    const delayMs = Number(process.env.MYSQL_RETRY_DELAY_MS || 3000);
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+            await pool.query('SELECT 1');
+            return;
+        } catch (error) {
+            lastError = error;
+            if (attempt < attempts) {
+                console.warn(`MySQL is not ready yet (attempt ${attempt}/${attempts}). Retrying in ${delayMs}ms...`);
+                await sleep(delayMs);
+            }
+        }
+    }
+
+    const finalError = new Error(`Unable to connect to MySQL after ${attempts} attempts.`);
+    finalError.cause = lastError;
+    throw finalError;
 }
 
 async function initMySql() {
@@ -19,15 +43,18 @@ async function initMySql() {
     }
 
     mysqlPool = mysql.createPool({
-        host: process.env.MYSQL_HOST,
+        host: process.env.MYSQL_HOST || 'localhost',
         port: Number(process.env.MYSQL_PORT || 3306),
         user: process.env.MYSQL_USER,
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DATABASE,
         waitForConnections: true,
         connectionLimit: 10,
-        queueLimit: 0
+        queueLimit: 0,
+        connectTimeout: 10000
     });
+
+    await waitForMySqlReady(mysqlPool);
 
     await mysqlPool.query(`
         CREATE TABLE IF NOT EXISTS purchases (
