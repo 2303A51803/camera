@@ -33,7 +33,9 @@ app.use(express.json());
 // ============================================
 const getCorsOptions = () => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5000';
+    const renderExternalUrl = process.env.RENDER_EXTERNAL_URL;
     const nodeEnv = process.env.NODE_ENV || 'development';
+    const allowAllOrigins = frontendUrl.trim() === '*';
 
     const allowedOrigins = [
         'http://localhost:3000',      // Local backend
@@ -42,6 +44,10 @@ const getCorsOptions = () => {
         'http://127.0.0.1:5000',
         frontendUrl,                  // Production frontend
     ];
+
+    if (renderExternalUrl) {
+        allowedOrigins.push(renderExternalUrl);
+    }
 
     // Add Vercel URL in production
     if (nodeEnv === 'production' && process.env.VERCEL_URL) {
@@ -52,6 +58,10 @@ const getCorsOptions = () => {
         origin: (origin, callback) => {
             // Allow requests with no origin (mobile apps, curl, Postman)
             if (!origin) return callback(null, true);
+
+            if (allowAllOrigins) {
+                return callback(null, true);
+            }
 
             if (allowedOrigins.includes(origin)) {
                 callback(null, true);
