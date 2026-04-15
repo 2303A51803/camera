@@ -1,0 +1,29 @@
+app:
+  name: camera-store-backend
+  env: development
+  port: 3000
+
+security:
+  jwtSecret: camera-store-dev-secret-change-me
+
+cors:
+  frontendUrl: http://localhost:5000
+  frontendGithubPagesUrl: https://2303a51803.github.io
+  allowAllOrigins: false
+
+database:
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: ""
+    database: camera_store
+
+email:
+  smtp:
+    host: ""
+    port: 587
+    secure: false
+    user: ""
+    pass: ""
+  from: ""
