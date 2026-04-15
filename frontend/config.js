@@ -5,9 +5,18 @@
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-    // For production (Vercel)
-    if (typeof window !== 'undefined' && process.env.REACT_APP_API_URL) {
-        return process.env.REACT_APP_API_URL;
+    const githubPagesBackendUrl = 'https://camera-store.onrender.com';
+
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:3000';
+        }
+
+        if (hostname.endsWith('github.io')) {
+            return githubPagesBackendUrl;
+        }
     }
 
     // For Vite
@@ -15,13 +24,13 @@ const getApiBaseUrl = () => {
         return import.meta.env.VITE_API_URL;
     }
 
-    // Default: same origin (both on same server)
-    if (typeof window !== 'undefined') {
-        return window.location.origin;
+    // For other production builds
+    if (typeof window !== 'undefined' && process.env.REACT_APP_API_URL) {
+        return process.env.REACT_APP_API_URL;
     }
 
     // Fallback
-    return 'http://localhost:3000';
+    return githubPagesBackendUrl;
 };
 
 const API_BASE_URL = getApiBaseUrl();
