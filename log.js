@@ -1,9 +1,23 @@
 const loginForm = document.getElementById('login-form');
 const savePasswordBtn = document.getElementById('save-password');
 
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000'
-    : window.location.origin;
+const getApiBaseUrl = () => {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+    if (isLocal) {
+        return 'http://localhost:3000';
+    }
+
+    // GitHub Pages hosts only static files, so API must point to deployed backend.
+    if (hostname.endsWith('github.io')) {
+        return 'https://camera-3-weni.onrender.com';
+    }
+
+    return window.location.origin;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 let toastTimer = null;
 

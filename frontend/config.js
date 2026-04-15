@@ -5,7 +5,7 @@
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-    const githubPagesBackendUrl = 'https://camera-store.onrender.com';
+    const githubPagesBackendUrl = 'https://camera-3-weni.onrender.com';
 
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
