@@ -2,6 +2,7 @@ const loginForm = document.getElementById('login-form');
 const savePasswordBtn = document.getElementById('save-password');
 
 const getApiBaseUrl = () => {
+    const renderBackendUrl = 'https://camera-3-weni.onrender.com';
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
 
@@ -9,12 +10,7 @@ const getApiBaseUrl = () => {
         return 'http://localhost:3000';
     }
 
-    // GitHub Pages hosts only static files, so API must point to deployed backend.
-    if (hostname.endsWith('github.io')) {
-        return 'https://camera-3-weni.onrender.com';
-    }
-
-    return window.location.origin;
+    return renderBackendUrl;
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -125,6 +121,7 @@ if (loginForm) {
             };
             localStorage.setItem('cameraStoreUser', JSON.stringify(authUser));
             localStorage.setItem('cameraStoreToken', data.token);
+            localStorage.setItem('token', data.token);
             showMessage(data.message || 'Login successful. Redirecting...', 'success');
             setTimeout(() => {
                 window.location.href = 'index.html';

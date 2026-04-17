@@ -70,7 +70,7 @@ After following this guide, you'll have a production-ready full-stack deployment
 - [ ] Import GitHub repository
 - [ ] Set root directory: `frontend`
 - [ ] Add environment variables:
-  - `REACT_APP_API_URL` → `https://your-backend.onrender.com`
+   - `REACT_APP_API_URL` → `https://camera-3-weni.onrender.com`
 - [ ] Connect custom domain (optional)
 
 #### Render Setup
@@ -109,7 +109,7 @@ After following this guide, you'll have a production-ready full-stack deployment
 # Add to GitHub as RENDER_SERVICE_ID
 
 # 6. Backend URL (optional)
-# From Render: https://your-service.onrender.com
+# From Render: https://camera-3-weni.onrender.com
 # Add to GitHub as BACKEND_URL
 ```
 
@@ -167,13 +167,13 @@ New repository secret
 // In browser console on production URL:
 
 // Test API connection
-fetch('https://your-backend.onrender.com/health')
+fetch('https://camera-3-weni.onrender.com/health')
   .then(r => r.json())
   .then(d => console.log('✅ Backend OK:', d))
   .catch(e => console.error('❌ Backend Issue:', e))
 
 // Test CORS
-fetch('https://your-backend.onrender.com/api/products')
+fetch('https://camera-3-weni.onrender.com/api/products')
   .then(r => r.json())
   .then(d => console.log('✅ CORS Works:', d))
   .catch(e => console.error('❌ CORS Issue:', e))

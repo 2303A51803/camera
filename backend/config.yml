@@ -8,7 +8,6 @@ security:
 
 cors:
   frontendUrl: http://localhost:5000
-  frontendGithubPagesUrl: https://2303a51803.github.io
   allowAllOrigins: false
 
 database:

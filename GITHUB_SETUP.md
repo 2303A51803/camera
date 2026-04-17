@@ -63,7 +63,7 @@ git push -u origin main
 4. Add to GitHub Secrets as `RENDER_SERVICE_ID`
 
 #### Get `BACKEND_URL` (optional, for health checks)
-1. From Render dashboard: `https://your-service.onrender.com`
+1. From Render dashboard: `https://camera-3-weni.onrender.com`
 2. Add to GitHub Secrets as `BACKEND_URL`
 
 ---
@@ -211,7 +211,7 @@ After deployment, update environment variables:
 
 ### On Vercel:
 1. Project Settings → Environment Variables
-2. Add: `REACT_APP_API_URL=https://your-backend.onrender.com`
+2. Add: `REACT_APP_API_URL=https://camera-3-weni.onrender.com`
 3. Redeploy
 
 ### On Render:
@@ -225,7 +225,7 @@ After deployment, update environment variables:
 
 ### Backend Health Check
 ```bash
-curl -X GET https://your-backend.onrender.com/health
+curl -X GET https://camera-3-weni.onrender.com/health
 # Or check console logs on Render dashboard
 ```
 
@@ -238,7 +238,7 @@ https://your-vercel-project.vercel.app
 ### API Connection Test
 ```javascript
 // In browser console:
-fetch('https://your-backend.onrender.com/api/products')
+fetch('https://camera-3-weni.onrender.com/api/products')
   .then(r => r.json())
   .then(d => console.log('✅ Connected!', d))
   .catch(e => console.error('❌ Error:', e))

@@ -1,0 +1,114 @@
+name: Build Node React Express MySQL
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password_change_me
+          MYSQL_DATABASE: camera_store
+          MYSQL_USER: camera_app
+          MYSQL_PASSWORD: camera_app_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot_password_change_me --silent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 20s
+
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: camera_app
+      MYSQL_PASSWORD: camera_app_password
+      MYSQL_DATABASE: camera_store
+      MYSQL_RETRY_ATTEMPTS: 20
+      MYSQL_RETRY_DELAY_MS: 2000
+      JWT_SECRET: github-actions-test-secret
+      FRONTEND_URL: http://localhost:5000
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Show repository structure
+        run: |
+          find . -maxdepth 2 -type f | sort
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run Backend Tests
+        working-directory: backend
+        run: npm test
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build React App
+        working-directory: frontend
+        run: npm run react:build
+
+      - name: Verify MySQL Connectivity
+        working-directory: backend
+        run: |
+          node -e "const mysql=require('mysql2/promise'); (async()=>{ const pool=mysql.createPool({host: process.env.MYSQL_HOST, port:Number(process.env.MYSQL_PORT), user: process.env.MYSQL_USER, password: process.env.MYSQL_PASSWORD, database: process.env.MYSQL_DATABASE}); await pool.query('SELECT 1'); console.log('MySQL connection OK'); await pool.end(); })().catch((error)=>{ console.error(error); process.exit(1); })"
+
+      - name: Start Express Backend
+        working-directory: backend
+        run: |
+          nohup npm start > ../backend.log 2>&1 &
+          echo $! > ../backend.pid
+
+      - name: Wait for backend health endpoint
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/health; then
+              echo "Backend is healthy."
+              exit 0
+            fi
+
+            echo "Waiting for backend to become healthy..."
+            sleep 5
+          done
+
+          echo "Backend did not become healthy in time."
+          cat backend.log
+          exit 1
+
+      - name: Stop Backend
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then
+            kill "$(cat backend.pid)" || true
+          fi

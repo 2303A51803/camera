@@ -1,0 +1,68 @@
+services:
+  # Backend API service (Node.js + Express).
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: camera_store_app
+    ports:
+      # Expose backend at http://localhost:3000
+      - "3000:3000"
+    environment:
+      # App runtime settings.
+      NODE_ENV: development
+      PORT: 3000
+
+      # Database connection details (use service name "db" as host).
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: camera_app
+      MYSQL_PASSWORD: camera_app_password
+      MYSQL_DATABASE: camera_store
+
+      # Retry settings so the app waits for MySQL startup.
+      MYSQL_RETRY_ATTEMPTS: 20
+      MYSQL_RETRY_DELAY_MS: 3000
+
+      # Application secrets/config (replace JWT secret for real deployments).
+      JWT_SECRET: docker-dev-jwt-secret-change-me
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      # Wait for db healthcheck before starting app container.
+      db:
+        condition: service_healthy
+    volumes:
+      # Persist SQLite file used by backend/db.js across container restarts.
+      - ./backend/data:/app/backend/data
+    restart: unless-stopped
+
+  # MySQL database service.
+  db:
+    image: mysql:8.0
+    container_name: camera_store_db
+    ports:
+      # Expose MySQL on host port 3306 by default; override with MYSQL_HOST_PORT if needed.
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    environment:
+      # Root password for administration.
+      MYSQL_ROOT_PASSWORD: root_password_change_me
+
+      # App database + non-root app user created at first startup.
+      MYSQL_DATABASE: camera_store
+      MYSQL_USER: camera_app
+      MYSQL_PASSWORD: camera_app_password
+    volumes:
+      # Persist MySQL data so records survive container restarts.
+      - db_data:/var/lib/mysql
+    healthcheck:
+      # Use mysqladmin ping until MySQL responds as healthy.
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+# Named volume for MySQL persistent storage.
+volumes:
+  db_data:

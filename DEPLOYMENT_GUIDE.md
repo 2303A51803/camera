@@ -42,8 +42,8 @@ hci-project/
 ### 1. Root `.env.example`
 ```bash
 # Frontend (Vercel)
-VITE_API_URL=https://your-backend.onrender.com
-REACT_APP_API_URL=https://your-backend.onrender.com
+VITE_API_URL=https://camera-3-weni.onrender.com
+REACT_APP_API_URL=https://camera-3-weni.onrender.com
 
 # Backend (Render)
 PORT=3000
@@ -161,7 +161,7 @@ cp backend/.env.example backend/.env
 const API_BASE_URL = process.env.REACT_APP_API_URL || 
                      (typeof window !== 'undefined' && window.location.origin === 'http://localhost:3000' 
                        ? 'http://localhost:3000' 
-                       : 'https://your-backend.onrender.com');
+                       : 'https://camera-3-weni.onrender.com');
 
 export const API_ENDPOINTS = {
   AUTH: {
@@ -348,7 +348,7 @@ RENDER_SERVICE_ID     → Get after creating service on Render
 5. Build Command: `npm run build`
 6. Output Directory: `.`
 7. Add environment variables:
-   - `REACT_APP_API_URL=https://your-backend.onrender.com`
+  - `REACT_APP_API_URL=https://camera-3-weni.onrender.com`
 
 ### Step 3: Push to GitHub & Monitor
 ```bash
@@ -387,7 +387,7 @@ console.log('CORS allowed origin:', corsOptions.origin);
 ### API Connection Issues
 ```javascript
 // In browser console:
-fetch('https://your-backend.onrender.com/api/products')
+fetch('https://camera-3-weni.onrender.com/api/products')
   .then(r => r.json())
   .then(d => console.log(d))
   .catch(e => console.error('API Error:', e));

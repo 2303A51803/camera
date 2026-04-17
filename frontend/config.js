@@ -5,7 +5,7 @@
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
-    const githubPagesBackendUrl = 'https://camera-3-weni.onrender.com';
+    const renderBackendUrl = 'https://camera-3-weni.onrender.com';
 
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
@@ -14,9 +14,6 @@ const getApiBaseUrl = () => {
             return 'http://localhost:3000';
         }
 
-        if (hostname.endsWith('github.io')) {
-            return githubPagesBackendUrl;
-        }
     }
 
     // For Vite
@@ -30,7 +27,7 @@ const getApiBaseUrl = () => {
     }
 
     // Fallback
-    return githubPagesBackendUrl;
+    return renderBackendUrl;
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -136,7 +133,7 @@ export const fetchAPI = async (url, options = {}) => {
  * Get authorization header with JWT token
  */
 export const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || localStorage.getItem('cameraStoreToken');
     if (token) {
         return {
             Authorization: `Bearer ${token}`,

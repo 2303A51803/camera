@@ -14,6 +14,7 @@ function isMySqlConfigured() {
 }
 
 async function waitForMySqlReady(pool) {
+    // Retry connection checks so the app can wait for MySQL startup in Docker.
     const attempts = Number(process.env.MYSQL_RETRY_ATTEMPTS || 10);
     const delayMs = Number(process.env.MYSQL_RETRY_DELAY_MS || 3000);
     let lastError = null;
@@ -43,7 +44,8 @@ async function initMySql() {
     }
 
     mysqlPool = mysql.createPool({
-        host: process.env.MYSQL_HOST || 'localhost',
+        // In Docker Compose, MySQL is reachable by service name "db".
+        host: process.env.MYSQL_HOST || 'db',
         port: Number(process.env.MYSQL_PORT || 3306),
         user: process.env.MYSQL_USER,
         password: process.env.MYSQL_PASSWORD,

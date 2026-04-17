@@ -1,6 +1,7 @@
 const registerForm = document.getElementById('register-form');
 
 const getApiBaseUrl = () => {
+    const renderBackendUrl = 'https://camera-3-weni.onrender.com';
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
 
@@ -8,12 +9,7 @@ const getApiBaseUrl = () => {
         return 'http://localhost:3000';
     }
 
-    // GitHub Pages hosts only static files, so API must point to deployed backend.
-    if (hostname.endsWith('github.io')) {
-        return 'https://camera-3-weni.onrender.com';
-    }
-
-    return window.location.origin;
+    return renderBackendUrl;
 };
 
 const API_BASE_URL = getApiBaseUrl();
