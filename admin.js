@@ -66,8 +66,36 @@ function formatDate(value) {
     });
 }
 
+function toEndOfDay(dateValue) {
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) {
+        return null;
+    }
+
+    parsed.setHours(23, 59, 59, 999);
+    return parsed;
+}
+
+function isExpiredConfirmedOrder(purchase) {
+    const status = String(purchase?.status || '').toLowerCase();
+    if (status !== 'confirmed' || !purchase?.deliveryDate) {
+        return false;
+    }
+
+    const deliveryEnd = toEndOfDay(purchase.deliveryDate);
+    if (!deliveryEnd) {
+        return false;
+    }
+
+    return Date.now() > deliveryEnd.getTime();
+}
+
 function renderCartItems(items) {
-    if (!Array.isArray(items) || items.length === 0) {
+    const visibleItems = Array.isArray(items)
+        ? items.filter((purchase) => !isExpiredConfirmedOrder(purchase))
+        : [];
+
+    if (visibleItems.length === 0) {
         cartFeed.innerHTML = '<div class="empty-state"><h3>No orders yet</h3><p>Customer orders will appear here after checkout.</p></div>';
         totalItems.textContent = '0';
         totalProducts.textContent = '0';
@@ -76,13 +104,13 @@ function renderCartItems(items) {
     }
 
     const uniqueProducts = new Set();
-    const uniqueCustomers = new Set(items.map((item) => item.userId));
+    const uniqueCustomers = new Set(visibleItems.map((item) => item.userId));
 
-    items.forEach((purchase) => {
+    visibleItems.forEach((purchase) => {
         (purchase.items || []).forEach((item) => uniqueProducts.add(item.name));
     });
 
-    totalItems.textContent = String(items.length);
+    totalItems.textContent = String(visibleItems.length);
     totalProducts.textContent = String(uniqueProducts.size);
     totalCustomers.textContent = String(uniqueCustomers.size);
 
@@ -100,7 +128,7 @@ function renderCartItems(items) {
                 </tr>
             </thead>
             <tbody>
-                ${items.map((purchase) => {
+                ${visibleItems.map((purchase) => {
         const lines = (purchase.items || []).map((item) => `${item.name} x${item.quantity}`).join('<br>');
         const status = String(purchase.status || '').toLowerCase();
         const isConfirmed = status === 'confirmed';
@@ -213,3 +241,5 @@ async function loadCartFeed() {
 
 refreshBtn.addEventListener('click', loadCartFeed);
 loadCartFeed();
+
+setInterval(loadCartFeed, 60 * 1000);
