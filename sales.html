@@ -29,7 +29,15 @@
         </div>
         <div class="header-actions">
             <a class="header-link" href="purchase-history.html">Orders</a>
-            <a class="header-link" href="login.html">Sign In</a>
+            <div class="login-chooser">
+                <a class="header-link login-trigger" href="login.html" aria-haspopup="true">Login</a>
+                <div class="login-options" role="menu" aria-label="Choose login role">
+                    <a href="login.html?role=user"
+                        onclick="localStorage.setItem('cameraStoreRolePreference','user')">User Login</a>
+                    <a href="admin-auth.html" onclick="localStorage.setItem('cameraStoreRolePreference','admin')">Admin
+                        Login</a>
+                </div>
+            </div>
             <button id="cart-icon" class="cart-button" type="button">
                 Cart
                 <span id="cart-count">0</span>
@@ -168,7 +176,11 @@
         <div>
             <h4>Quick Links</h4>
             <a href="purchase-history.html">Purchase History</a>
-            <a href="login.html">Sign In</a>
+            <a href="login.html?role=user" onclick="localStorage.setItem('cameraStoreRolePreference','user')">User
+                Login</a>
+            <a href="admin-auth.html" onclick="localStorage.setItem('cameraStoreRolePreference','admin')">Admin
+                Login</a>
+            <a href="admin.html">Admin Dashboard</a>
         </div>
     </footer>
 

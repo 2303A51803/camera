@@ -20,6 +20,8 @@ const { initMySql, getMySqlPool } = require('./mysql');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@pixelshot.com').trim().toLowerCase();
+let sharedDb = null;
 
 // ============================================
 // MIDDLEWARE
@@ -97,7 +99,8 @@ function createAuthToken(user) {
     return jwt.sign(
         {
             userId: user.id,
-            email: user.email
+            email: user.email,
+            role: user.role || 'customer'
         },
         JWT_SECRET,
         { expiresIn: '1d' }
@@ -116,13 +119,31 @@ function authenticateToken(req, res, next) {
         const payload = jwt.verify(match[1], JWT_SECRET);
         req.user = {
             id: payload.userId,
-            email: payload.email
+            email: payload.email,
+            role: payload.role || 'customer'
         };
         return next();
     } catch (error) {
         console.error('JWT verification error:', error);
         return res.status(401).json({ message: 'Invalid or expired authorization token.' });
     }
+}
+
+function isAdminUser(user) {
+    if (!user || !user.email) {
+        return false;
+    }
+
+    const normalizedEmail = String(user.email).trim().toLowerCase();
+    return normalizedEmail === ADMIN_EMAIL || user.role === 'admin';
+}
+
+function requireAdmin(req, res, next) {
+    if (!isAdminUser(req.user)) {
+        return res.status(403).json({ message: 'Admin access is required.' });
+    }
+
+    return next();
 }
 
 function createMailerTransport() {
@@ -177,6 +198,243 @@ app.delete('/api/cart/:itemId', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Remove cart item error:', error);
         return res.status(500).json({ message: 'Server error while removing cart item.' });
+    }
+});
+// Get all cart items for admin dashboard
+app.get('/api/admin/cart-items', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const mysqlPool = getMySqlPool();
+        if (!mysqlPool) {
+            return res.status(503).json({ message: 'Cart service is not available. Please configure MySQL.' });
+        }
+
+        const [rows] = await mysqlPool.execute(
+            `SELECT
+                c.id,
+                c.user_id,
+                c.item_name,
+                c.price,
+                c.quantity,
+                (c.price * c.quantity) AS line_total,
+                c.created_at
+             FROM cart_items c
+             ORDER BY c.created_at DESC, c.id DESC`
+        );
+
+        const userIds = [...new Set(rows.map((row) => Number(row.user_id)).filter((userId) => Number.isInteger(userId) && userId > 0))];
+        const usersById = new Map();
+
+        if (userIds.length > 0) {
+            const placeholders = userIds.map(() => '?').join(', ');
+            const users = await db.all(
+                `SELECT id, name, email FROM users WHERE id IN (${placeholders})`,
+                userIds
+            );
+
+            for (const user of users) {
+                usersById.set(Number(user.id), user);
+            }
+        }
+
+        const cartItems = rows.map((row) => {
+            const user = usersById.get(Number(row.user_id));
+            return {
+                ...row,
+                user_name: user?.name || 'Unknown User',
+                user_email: user?.email || ''
+            };
+        });
+
+        return res.status(200).json({ cartItems });
+    } catch (error) {
+        console.error('Admin cart fetch error:', error);
+        return res.status(500).json({ message: 'Server error while fetching cart items.' });
+    }
+});
+
+// Get all purchases for admin dashboard
+app.get('/api/admin/purchases', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const mysqlPool = getMySqlPool();
+        let rows;
+
+        if (mysqlPool) {
+            const [mysqlRows] = await mysqlPool.execute(
+                `SELECT p.id AS purchase_id,
+                        p.user_id,
+                        p.customer_name,
+                        p.customer_email,
+                        p.total_amount,
+                        p.status,
+                        p.delivery_date,
+                        p.admin_message,
+                        p.created_at,
+                        pi.item_name,
+                        pi.price,
+                        pi.quantity,
+                        pi.line_total
+                 FROM purchases p
+                 LEFT JOIN purchase_items pi ON pi.purchase_id = p.id
+                 ORDER BY p.created_at DESC, p.id DESC, pi.id ASC`
+            );
+            rows = mysqlRows;
+        } else {
+            if (!sharedDb) {
+                return res.status(503).json({ message: 'Purchase service is starting. Please refresh in a moment.' });
+            }
+            rows = await sharedDb.all(
+                `SELECT p.id AS purchase_id,
+                        p.user_id,
+                        p.customer_name,
+                        p.customer_email,
+                        p.total_amount,
+                        p.status,
+                        p.delivery_date,
+                        p.admin_message,
+                        p.created_at,
+                        pi.item_name,
+                        pi.price,
+                        pi.quantity,
+                        pi.line_total
+                 FROM purchases p
+                 LEFT JOIN purchase_items pi ON pi.purchase_id = p.id
+                 ORDER BY p.created_at DESC, p.id DESC, pi.id ASC`
+            );
+        }
+
+        const purchaseMap = new Map();
+
+        for (const row of rows) {
+            if (!purchaseMap.has(row.purchase_id)) {
+                purchaseMap.set(row.purchase_id, {
+                    purchaseId: row.purchase_id,
+                    userId: row.user_id,
+                    customerName: row.customer_name || 'Unknown User',
+                    customerEmail: row.customer_email || '',
+                    totalAmount: Number(row.total_amount || 0),
+                    status: row.status || 'confirmed',
+                    deliveryDate: row.delivery_date || null,
+                    adminMessage: row.admin_message || '',
+                    createdAt: row.created_at,
+                    items: []
+                });
+            }
+
+            if (row.item_name) {
+                purchaseMap.get(row.purchase_id).items.push({
+                    name: row.item_name,
+                    price: Number(row.price || 0),
+                    quantity: Number(row.quantity || 0),
+                    lineTotal: Number(row.line_total || 0)
+                });
+            }
+        }
+
+        return res.status(200).json({ purchases: Array.from(purchaseMap.values()) });
+    } catch (error) {
+        console.error('Admin purchase fetch error:', error);
+        return res.status(500).json({ message: 'Server error while fetching purchases.' });
+    }
+});
+
+// Confirm a purchase and set expected delivery date
+app.post('/api/admin/purchases/:purchaseId/confirm', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const mysqlPool = getMySqlPool();
+
+        const purchaseId = Number(req.params.purchaseId);
+        if (!Number.isInteger(purchaseId) || purchaseId <= 0) {
+            return res.status(400).json({ message: 'Valid purchaseId is required.' });
+        }
+
+        const { deliveryDate } = req.body || {};
+        let normalizedDeliveryDate = null;
+
+        if (deliveryDate) {
+            const parsed = new Date(deliveryDate);
+            if (Number.isNaN(parsed.getTime())) {
+                return res.status(400).json({ message: 'Valid deliveryDate is required.' });
+            }
+            normalizedDeliveryDate = parsed.toISOString().slice(0, 19).replace('T', ' ');
+        } else {
+            const defaultDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+            normalizedDeliveryDate = defaultDate.toISOString().slice(0, 19).replace('T', ' ');
+        }
+
+        let purchase;
+
+        if (mysqlPool) {
+            const [rows] = await mysqlPool.execute(
+                `SELECT id, customer_name, customer_email, status
+                 FROM purchases
+                 WHERE id = ?`,
+                [purchaseId]
+            );
+
+            if (!rows.length) {
+                return res.status(404).json({ message: 'Purchase not found.' });
+            }
+
+            purchase = rows[0];
+        } else {
+            if (!sharedDb) {
+                return res.status(503).json({ message: 'Purchase service is starting. Please refresh in a moment.' });
+            }
+
+            purchase = await sharedDb.get(
+                `SELECT id, customer_name, customer_email, status
+                 FROM purchases
+                 WHERE id = ?`,
+                purchaseId
+            );
+
+            if (!purchase) {
+                return res.status(404).json({ message: 'Purchase not found.' });
+            }
+        }
+        const parsedDeliveryDate = new Date(normalizedDeliveryDate.replace(' ', 'T') + 'Z');
+        const readableDeliveryDate = formatDateDisplay(parsedDeliveryDate.toISOString());
+        const adminMessage = `Your order is confirmed and your order will be delivered by ${readableDeliveryDate}.`;
+
+        if (mysqlPool) {
+            await mysqlPool.execute(
+                `UPDATE purchases
+                 SET status = 'confirmed',
+                     delivery_date = ?,
+                     admin_message = ?
+                 WHERE id = ?`,
+                [normalizedDeliveryDate, adminMessage, purchaseId]
+            );
+        } else {
+            await sharedDb.run(
+                `UPDATE purchases
+                 SET status = 'confirmed',
+                     delivery_date = ?,
+                     admin_message = ?
+                 WHERE id = ?`,
+                normalizedDeliveryDate,
+                adminMessage,
+                purchaseId
+            );
+        }
+
+        await sendEmail({
+            to: purchase.customer_email,
+            subject: `Order #${purchaseId} confirmation`,
+            text: `Dear ${purchase.customer_name}, ${adminMessage}`,
+            html: `<p>Dear ${purchase.customer_name},</p><p>${adminMessage}</p><p>Regards,<br/>Camera Store Team</p>`
+        });
+
+        return res.status(200).json({
+            message: adminMessage,
+            purchaseId,
+            status: 'confirmed',
+            deliveryDate: parsedDeliveryDate.toISOString(),
+            adminMessage
+        });
+    } catch (error) {
+        console.error('Admin purchase confirmation error:', error);
+        return res.status(500).json({ message: 'Server error while confirming purchase.' });
     }
 });
 // Get cart items for a user
@@ -389,6 +647,35 @@ function scheduleReminder(db, rental) {
 
 (async () => {
     const db = await initDb();
+    sharedDb = db;
+
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS purchases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            customer_name TEXT NOT NULL,
+            customer_email TEXT NOT NULL,
+            total_amount REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            delivery_date TEXT NULL,
+            admin_message TEXT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS purchase_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            purchase_id INTEGER NOT NULL,
+            item_name TEXT NOT NULL,
+            price REAL NOT NULL,
+            quantity INTEGER NOT NULL,
+            line_total REAL NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE
+        );
+    `);
+
     await initMySql();
 
     const activeRentals = await db.all('SELECT id, due_date, reminder_sent, status FROM rentals WHERE status = ?', 'active');
@@ -396,7 +683,7 @@ function scheduleReminder(db, rental) {
 
     app.post('/api/auth/register', async (req, res) => {
         try {
-            const { name, email, password } = req.body;
+            const { name, email, password, role: requestedRole } = req.body;
 
             if (!name || !email || !password) {
                 return res.status(400).json({ message: 'Name, email, and password are required.' });
@@ -409,14 +696,17 @@ function scheduleReminder(db, rental) {
             }
 
             const passwordHash = await bcrypt.hash(password, 10);
+            const normalizedRole = String(requestedRole || '').trim().toLowerCase();
+            const role = normalizedRole === 'admin' || normalizedEmail === ADMIN_EMAIL ? 'admin' : 'customer';
             await db.run(
-                'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
+                'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
                 name.trim(),
                 normalizedEmail,
-                passwordHash
+                passwordHash,
+                role
             );
 
-            return res.status(201).json({ message: 'Registration successful.' });
+            return res.status(201).json({ message: 'Registration successful.', role });
         } catch (error) {
             console.error('Register error:', error);
             return res.status(500).json({ message: 'Server error during registration.' });
@@ -432,7 +722,7 @@ function scheduleReminder(db, rental) {
             }
 
             const normalizedEmail = email.trim().toLowerCase();
-            const user = await db.get('SELECT id, name, email, password_hash FROM users WHERE email = ?', normalizedEmail);
+            const user = await db.get('SELECT id, name, email, password_hash, role FROM users WHERE email = ?', normalizedEmail);
 
             if (!user) {
                 return res.status(401).json({ message: 'Invalid email or password.' });
@@ -451,7 +741,8 @@ function scheduleReminder(db, rental) {
                 user: {
                     id: user.id,
                     name: user.name,
-                    email: user.email
+                    email: user.email,
+                    role: isAdminUser(user) ? 'admin' : (user.role || 'customer')
                 }
             });
         } catch (error) {
@@ -554,11 +845,6 @@ function scheduleReminder(db, rental) {
     app.post('/api/purchases/confirm', authenticateToken, async (req, res) => {
         try {
             const mysqlPool = getMySqlPool();
-            if (!mysqlPool) {
-                return res.status(503).json({
-                    message: 'Purchase service is not available. Please configure MySQL settings on the server.'
-                });
-            }
 
             const { userId, items } = req.body;
 
@@ -608,41 +894,76 @@ function scheduleReminder(db, rental) {
                 groupedItems.reduce((sum, item) => sum + item.lineTotal, 0).toFixed(2)
             );
 
-            const connection = await mysqlPool.getConnection();
+            let purchaseId;
 
-            try {
-                await connection.beginTransaction();
+            if (mysqlPool) {
+                const connection = await mysqlPool.getConnection();
 
-                const [purchaseResult] = await connection.execute(
-                    `INSERT INTO purchases (user_id, customer_name, customer_email, total_amount, status)
-                     VALUES (?, ?, ?, ?, 'confirmed')`,
-                    [user.id, user.name, user.email, totalAmount]
-                );
+                try {
+                    await connection.beginTransaction();
 
-                const purchaseId = purchaseResult.insertId;
-
-                for (const item of groupedItems) {
-                    await connection.execute(
-                        `INSERT INTO purchase_items (purchase_id, item_name, price, quantity, line_total)
-                         VALUES (?, ?, ?, ?, ?)`,
-                        [purchaseId, item.name, item.price, item.quantity, item.lineTotal]
+                    const [purchaseResult] = await connection.execute(
+                        `INSERT INTO purchases (user_id, customer_name, customer_email, total_amount, status)
+                         VALUES (?, ?, ?, ?, 'pending')`,
+                        [user.id, user.name, user.email, totalAmount]
                     );
+
+                    purchaseId = purchaseResult.insertId;
+
+                    for (const item of groupedItems) {
+                        await connection.execute(
+                            `INSERT INTO purchase_items (purchase_id, item_name, price, quantity, line_total)
+                             VALUES (?, ?, ?, ?, ?)`,
+                            [purchaseId, item.name, item.price, item.quantity, item.lineTotal]
+                        );
+                    }
+
+                    await connection.commit();
+                } catch (error) {
+                    await connection.rollback();
+                    throw error;
+                } finally {
+                    connection.release();
                 }
+            } else {
+                await db.exec('BEGIN TRANSACTION');
+                try {
+                    const purchaseResult = await db.run(
+                        `INSERT INTO purchases (user_id, customer_name, customer_email, total_amount, status)
+                         VALUES (?, ?, ?, ?, 'pending')`,
+                        user.id,
+                        user.name,
+                        user.email,
+                        totalAmount
+                    );
+                    purchaseId = purchaseResult.lastID;
 
-                await connection.commit();
+                    for (const item of groupedItems) {
+                        await db.run(
+                            `INSERT INTO purchase_items (purchase_id, item_name, price, quantity, line_total)
+                             VALUES (?, ?, ?, ?, ?)`,
+                            purchaseId,
+                            item.name,
+                            item.price,
+                            item.quantity,
+                            item.lineTotal
+                        );
+                    }
 
-                return res.status(201).json({
-                    message: 'Purchase confirmed and stored successfully.',
-                    purchaseId,
-                    totalAmount,
-                    items: groupedItems
-                });
-            } catch (error) {
-                await connection.rollback();
-                throw error;
-            } finally {
-                connection.release();
+                    await db.exec('COMMIT');
+                } catch (error) {
+                    await db.exec('ROLLBACK');
+                    throw error;
+                }
             }
+
+            return res.status(201).json({
+                message: 'Purchase placed successfully. Waiting for admin confirmation.',
+                purchaseId,
+                totalAmount,
+                status: 'pending',
+                items: groupedItems
+            });
         } catch (error) {
             console.error('Purchase confirmation error:', error);
             return res.status(500).json({ message: 'Server error while saving purchase details.' });
@@ -689,11 +1010,6 @@ function scheduleReminder(db, rental) {
     app.get('/api/purchases/history/:userId', authenticateToken, async (req, res) => {
         try {
             const mysqlPool = getMySqlPool();
-            if (!mysqlPool) {
-                return res.status(503).json({
-                    message: 'Purchase history is not available. Please configure MySQL settings on the server.'
-                });
-            }
 
             const userId = Number(req.params.userId);
             if (!Number.isInteger(userId) || userId <= 0) {
@@ -709,21 +1025,45 @@ function scheduleReminder(db, rental) {
                 return res.status(404).json({ message: 'User not found.' });
             }
 
-            const [rows] = await mysqlPool.execute(
-                `SELECT p.id AS purchase_id,
-                        p.total_amount,
-                        p.status,
-                        p.created_at,
-                        pi.item_name,
-                        pi.price,
-                        pi.quantity,
-                        pi.line_total
-                 FROM purchases p
-                 LEFT JOIN purchase_items pi ON pi.purchase_id = p.id
-                 WHERE p.user_id = ?
-                 ORDER BY p.created_at DESC, pi.id ASC`,
-                [userId]
-            );
+            let rows;
+            if (mysqlPool) {
+                const [mysqlRows] = await mysqlPool.execute(
+                    `SELECT p.id AS purchase_id,
+                            p.total_amount,
+                            p.status,
+                            p.delivery_date,
+                            p.admin_message,
+                            p.created_at,
+                            pi.item_name,
+                            pi.price,
+                            pi.quantity,
+                            pi.line_total
+                     FROM purchases p
+                     LEFT JOIN purchase_items pi ON pi.purchase_id = p.id
+                     WHERE p.user_id = ?
+                     ORDER BY p.created_at DESC, pi.id ASC`,
+                    [userId]
+                );
+                rows = mysqlRows;
+            } else {
+                rows = await db.all(
+                    `SELECT p.id AS purchase_id,
+                            p.total_amount,
+                            p.status,
+                            p.delivery_date,
+                            p.admin_message,
+                            p.created_at,
+                            pi.item_name,
+                            pi.price,
+                            pi.quantity,
+                            pi.line_total
+                     FROM purchases p
+                     LEFT JOIN purchase_items pi ON pi.purchase_id = p.id
+                     WHERE p.user_id = ?
+                     ORDER BY p.created_at DESC, pi.id ASC`,
+                    userId
+                );
+            }
 
             const purchaseMap = new Map();
 
@@ -733,6 +1073,8 @@ function scheduleReminder(db, rental) {
                         purchaseId: row.purchase_id,
                         totalAmount: Number(row.total_amount),
                         status: row.status,
+                        deliveryDate: row.delivery_date || null,
+                        adminMessage: row.admin_message || '',
                         createdAt: row.created_at,
                         items: []
                     });

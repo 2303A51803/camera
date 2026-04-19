@@ -287,16 +287,21 @@
         </div>
     </div>
 
+    <script src="order-bridge.js"></script>
     <script>
         const cart = [];
         let totalPrice = 0;
 
-        function addToCart(cameraName, price) {
+        async function addToCart(cameraName, price) {
             const camera = { name: cameraName, price: price };
             cart.push(camera);
             totalPrice += price;
             document.getElementById('cart-count').textContent = cart.length;
-            alert(`${cameraName} has been added to your cart.`);
+            const orderResult = await window.orderBridge?.createPendingOrder([
+                { name: cameraName, price: Number(price), quantity: 1 }
+            ]);
+            const orderNote = orderResult?.ok ? ' Order sent to admin for confirmation.' : '';
+            alert(`${cameraName} has been added to your cart.${orderNote}`);
         }
 
         document.getElementById('cart-icon').onclick = function () {

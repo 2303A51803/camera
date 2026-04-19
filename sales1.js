@@ -1,6 +1,20 @@
 let cart = [];
 let toastTimer = null;
 
+const getApiBaseUrl = () => {
+    const renderBackendUrl = 'https://camera-3-weni.onrender.com';
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+    if (isLocal) {
+        return 'http://localhost:3000';
+    }
+
+    return renderBackendUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 const cartIcon = document.getElementById('cart-icon');
 const cartCount = document.getElementById('cart-count');
 const cartDetails = document.getElementById('cart-details');
@@ -88,6 +102,41 @@ function getLoggedInUser() {
     }
 }
 
+function guardAdminStoreAccess() {
+    const user = getLoggedInUser();
+    const role = String(user?.role || '').toLowerCase();
+
+    if (role === 'admin') {
+        window.location.href = 'admin.html';
+    }
+}
+
+function initLoginChooser() {
+    const choosers = document.querySelectorAll('.login-chooser');
+
+    choosers.forEach((chooser) => {
+        const trigger = chooser.querySelector('.login-trigger');
+        if (!trigger) {
+            return;
+        }
+
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            const willOpen = !chooser.classList.contains('open');
+            choosers.forEach((item) => item.classList.remove('open'));
+            if (willOpen) {
+                chooser.classList.add('open');
+            }
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.login-chooser')) {
+            choosers.forEach((item) => item.classList.remove('open'));
+        }
+    });
+}
+
 function getAuthToken() {
     const user = getLoggedInUser();
     return (user && user.token) || localStorage.getItem('cameraStoreToken') || '';
@@ -119,7 +168,7 @@ async function showCartDetails() {
         return;
     }
     try {
-        const res = await fetch(`/api/cart/${user.id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/cart/${user.id}`, {
             headers: getAuthHeaders()
         });
         const data = await res.json();
@@ -161,7 +210,7 @@ async function addToCart(productName, price) {
     const user = getLoggedInUser();
     if (user && user.id) {
         try {
-            await fetch('/api/cart', {
+            await fetch(`${API_BASE_URL}/api/cart`, {
                 method: 'POST',
                 headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
@@ -180,7 +229,7 @@ async function addToCart(productName, price) {
 
 async function removeFromCartDb(itemId) {
     try {
-        await fetch(`/api/cart/${itemId}`, {
+        await fetch(`${API_BASE_URL}/api/cart/${itemId}`, {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
@@ -208,11 +257,16 @@ async function confirmPurchase() {
         return;
     }
 
+    if (String(user.role || '').toLowerCase() === 'admin') {
+        showMessage('Admin account cannot place product orders. Please login as user.', 'warning');
+        return;
+    }
+
     checkoutBtn.disabled = true;
     checkoutBtn.textContent = 'Processing...';
 
     try {
-        const response = await fetch('/api/purchases/confirm', {
+        const response = await fetch(`${API_BASE_URL}/api/purchases/confirm`, {
             method: 'POST',
             headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
@@ -262,3 +316,5 @@ cartIcon.addEventListener('click', () => {
 });
 
 checkoutBtn.addEventListener('click', confirmPurchase);
+guardAdminStoreAccess();
+initLoginChooser();

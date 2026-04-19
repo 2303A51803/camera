@@ -546,9 +546,11 @@
         </div>
     </div>
 
+    <script src="order-bridge.js"></script>
     <script>
         let cartItems = [];
         let totalPrice = 0;
+        const API_BASE_URL = window.location.port === '5000' ? 'http://localhost:3000' : '';
         let toastTimer = null;
 
         function showMessage(message, type = 'warning') {
@@ -617,6 +619,14 @@
             });
             totalPrice += itemTotalPrice;
             displayCart();
+
+            await window.orderBridge?.createPendingOrder([
+                {
+                    name: `${itemName} rental (${numDays} day(s))`,
+                    price: Number(itemTotalPrice),
+                    quantity: 1
+                }
+            ]);
 
             showMessage(
                 'Important: Please return the camera on or before your deadline. '
@@ -726,12 +736,17 @@
                 return;
             }
 
+            if (window.orderBridge?.isAdminUser && window.orderBridge.isAdminUser(user)) {
+                showMessage('Admin account cannot place rental orders. Please login with a user account.', 'warning');
+                return;
+            }
+
             const confirmButton = document.getElementById('confirm-rental');
             confirmButton.disabled = true;
             confirmButton.textContent = 'Confirming...';
 
             try {
-                const response = await fetch('/api/rentals/confirm', {
+                const response = await fetch(`${API_BASE_URL}/api/rentals/confirm`, {
                     method: 'POST',
                     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({

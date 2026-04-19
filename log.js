@@ -1,5 +1,6 @@
 const loginForm = document.getElementById('login-form');
 const savePasswordBtn = document.getElementById('save-password');
+const roleBanner = document.getElementById('role-banner');
 
 const getApiBaseUrl = () => {
     const renderBackendUrl = 'https://camera-3-weni.onrender.com';
@@ -14,6 +15,18 @@ const getApiBaseUrl = () => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
+const selectedRole = new URLSearchParams(window.location.search).get('role') || localStorage.getItem('cameraStoreRolePreference') || '';
+
+if (roleBanner) {
+    const normalizedRole = String(selectedRole).toLowerCase();
+    if (normalizedRole === 'admin') {
+        roleBanner.textContent = 'Admin login selected. Use the admin account to continue.';
+    } else if (normalizedRole === 'user') {
+        roleBanner.textContent = 'User login selected. Use your customer account to continue.';
+    } else {
+        roleBanner.textContent = 'Please sign in with the account role you selected.';
+    }
+}
 
 let toastTimer = null;
 
@@ -122,9 +135,10 @@ if (loginForm) {
             localStorage.setItem('cameraStoreUser', JSON.stringify(authUser));
             localStorage.setItem('cameraStoreToken', data.token);
             localStorage.setItem('token', data.token);
+            localStorage.setItem('cameraStoreRolePreference', authUser.role || 'user');
             showMessage(data.message || 'Login successful. Redirecting...', 'success');
             setTimeout(() => {
-                window.location.href = 'index.html';
+                window.location.href = authUser.role === 'admin' ? 'admin.html' : 'index.html';
             }, 700);
         } catch (error) {
             console.error('Login error:', error);

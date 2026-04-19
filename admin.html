@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Pixel Shot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: rgba(255, 255, 255, 0.06);
+            --text: #e5eefc;
+            --muted: #94a3b8;
+            --accent: #f59e0b;
+            --accent-2: #38bdf8;
+            --border: rgba(255, 255, 255, 0.12);
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Manrope', sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.16), transparent 28%),
+                linear-gradient(180deg, #020617, #0f172a 55%, #111827);
+            min-height: 100vh;
+        }
+
+        .wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 18px 48px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.4fr 0.8fr;
+            gap: 16px;
+            align-items: stretch;
+            margin-bottom: 18px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(12px);
+        }
+
+        .hero-copy {
+            padding: 28px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--accent-2);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        h1 {
+            margin: 10px 0 8px;
+            font-size: clamp(2rem, 4vw, 3.8rem);
+            line-height: 1.02;
+        }
+
+        .subtext {
+            max-width: 62ch;
+            color: var(--muted);
+            font-size: 1.02rem;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 14px 16px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+
+        .stat span {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .side-card {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .side-card h2 {
+            margin: 0 0 8px;
+            font-size: 1.25rem;
+        }
+
+        .side-card p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .btn {
+            appearance: none;
+            border: none;
+            border-radius: 999px;
+            padding: 12px 16px;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, var(--accent), #fb7185);
+            color: #111827;
+        }
+
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 14px;
+        }
+
+        .toolbar h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .toolbar .hint {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .table-wrap {
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            color: #cbd5e1;
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        tbody td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .item-name {
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .meta {
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            background: rgba(56, 189, 248, 0.14);
+            color: #7dd3fc;
+        }
+
+        .empty-state,
+        .error-state,
+        .loading-state {
+            padding: 28px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            max-width: 430px;
+            background: #ffffff;
+            color: #111827;
+            border-left: 5px solid #0f172a;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+            border-radius: 14px;
+            padding: 14px 16px;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success {
+            border-left-color: #16a34a;
+        }
+
+        .toast.error {
+            border-left-color: #dc2626;
+        }
+
+        @media (max-width: 900px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tbody tr {
+                margin-bottom: 14px;
+                border: 1px solid var(--border);
+                border-radius: 18px;
+                overflow: hidden;
+            }
+
+            tbody td {
+                border-bottom: 1px solid var(--border);
+            }
+
+            tbody td:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <section class="hero">
+            <div class="panel hero-copy">
+                <div class="eyebrow">Admin Dashboard</div>
+                <h1>Track ordered products and confirm deliveries.</h1>
+                <p class="subtext">
+                    This admin view is only for order tracking. Review customer orders, set delivery dates, and
+                    confirm each order so customers receive the confirmation message.
+                </p>
+                <div class="stats">
+                    <div class="stat">
+                        <strong id="total-items">0</strong>
+                        <span>Total orders</span>
+                    </div>
+                    <div class="stat">
+                        <strong id="total-products">0</strong>
+                        <span>Ordered products</span>
+                    </div>
+                    <div class="stat">
+                        <strong id="total-customers">0</strong>
+                        <span>Customers</span>
+                    </div>
+                </div>
+            </div>
+            <aside class="panel side-card">
+                <div>
+                    <h2>Access control</h2>
+                    <p>
+                        Only accounts promoted as admin can open this page. By default, the server treats the address in
+                        <strong>ADMIN_EMAIL</strong> as the admin account.
+                    </p>
+                </div>
+                <div class="actions">
+                    <button id="refresh-btn" class="btn primary" type="button">Refresh feed</button>
+                </div>
+            </aside>
+        </section>
+
+        <div class="toolbar">
+            <div>
+                <h2>Recent ordered products</h2>
+                <div class="hint">Sorted newest first</div>
+            </div>
+            <span id="admin-status" class="pill">Checking access</span>
+        </div>
+
+        <section class="panel table-wrap">
+            <div id="cart-feed" class="loading-state">Loading cart data...</div>
+        </section>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>

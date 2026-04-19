@@ -66,8 +66,20 @@ async function initMySql() {
             customer_email VARCHAR(255) NOT NULL,
             total_amount DECIMAL(12, 2) NOT NULL,
             status VARCHAR(50) NOT NULL DEFAULT 'confirmed',
+            delivery_date DATETIME NULL,
+            admin_message VARCHAR(500) NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB;
+    `);
+
+    await mysqlPool.query(`
+        ALTER TABLE purchases
+        ADD COLUMN IF NOT EXISTS delivery_date DATETIME NULL;
+    `);
+
+    await mysqlPool.query(`
+        ALTER TABLE purchases
+        ADD COLUMN IF NOT EXISTS admin_message VARCHAR(500) NULL;
     `);
 
     await mysqlPool.query(`

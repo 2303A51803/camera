@@ -16,7 +16,7 @@ header {
     text-align: center;
     margin-top: 20px;
     width: 100%;
-    color:red;
+    color: red;
 }
 
 header h1 {
@@ -32,12 +32,22 @@ header p {
 }
 
 .form-container {
-    
+
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     width: 280px;
     text-align: center;
+}
+
+.role-banner {
+    margin: -6px 0 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(108, 117, 125, 0.12);
+    color: #444;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .form-container h2 {

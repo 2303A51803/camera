@@ -16,9 +16,17 @@ async function initDb() {
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'customer',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  const userColumns = await db.all('PRAGMA table_info(users)');
+  const hasRoleColumn = userColumns.some((column) => column.name === 'role');
+
+  if (!hasRoleColumn) {
+    await db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'customer';");
+  }
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS rentals (

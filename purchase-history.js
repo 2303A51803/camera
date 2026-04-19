@@ -2,6 +2,20 @@ const historyContent = document.getElementById('history-content');
 const refreshBtn = document.getElementById('refresh-history');
 const toast = document.getElementById('toast');
 
+const getApiBaseUrl = () => {
+    const renderBackendUrl = 'https://camera-3-weni.onrender.com';
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+    if (isLocal) {
+        return 'http://localhost:3000';
+    }
+
+    return renderBackendUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 let toastTimer = null;
 
 function showMessage(message, type = 'error') {
@@ -71,6 +85,8 @@ function renderHistory(purchases) {
                     <div><strong>Date:</strong> ${formatDate(purchase.createdAt)}</div>
                     <div><strong>Total:</strong> $${Number(purchase.totalAmount).toFixed(2)}</div>
                 </div>
+                ${purchase.adminMessage ? `<p><strong>Message:</strong> ${purchase.adminMessage}</p>` : ''}
+                ${purchase.deliveryDate ? `<p><strong>Delivery Date:</strong> ${formatDate(purchase.deliveryDate)}</p>` : ''}
                 <table class="items-table">
                     <thead>
                         <tr>
@@ -103,7 +119,7 @@ async function loadPurchaseHistory() {
         historyContent.innerHTML = '<div class="empty-state"><p>Loading purchase history...</p></div>';
 
         const token = getAuthToken();
-        const response = await fetch(`/api/purchases/history/${user.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/purchases/history/${user.id}`, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
